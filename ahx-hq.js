@@ -4,19 +4,23 @@
   ahx-hq.js - ES6 Module Version
 	usually the codeflow is like this:
 
-  import { AHXMaster, AHXSong, setAHXOversampling } from 'ahx-hq';
+  import { AHXMaster, AHXSong, setAHXOversampling, setAHXMasterVolume } from 'ahx-hq';
 
-	const ahxMaster = new AHXMaster(); // create a new AHX Replayer; only create one
+	const ahxMaster = AHXMaster(); // create a new AHX Replayer; only create one
 	const ahxSong = new AHXSong();
 	await ahxSong.LoadSong('song.ahx'); // asynchronously load a AHX song into memory
-	ahxMaster.Play(ahxSong); // start playing
 
-  setAHXOversampling(false); // change oversampling anytime while playing or before playing
+	ahxMaster.Play(ahxSong);    // start playing
+
+  setAHXOversampling(false);  // change oversampling anytime while playing or before playing
+
+  setAHXMasterVolume(0...1);  // change the master volume of the player anytime while playing
+                              //  or before playing, range is 0 to 1
 
 
 
 	---- Changelog ----
-	Modified Feb 02 2026 - convert to modern es6 module, add oversampling option (ffx)
+	Modified Feb 02 2026 - convert to modern es6 module, add oversampling option, master vol (ffx)
 	---------------------------
 	Modified Aug 30 2020 - Additional check for Tempo (bryc)
 	---------------------------
@@ -70,9 +74,14 @@
 // --- Global Config & Helpers ---
 
 let useOversampling = false;
+let masterVolume = 1.0;
 
-export function setAHXOversampling(enabled) {
+function setAHXOversampling(enabled) {
   useOversampling = enabled;
+}
+
+function setAHXMasterVolume(amount) {
+  masterVolume = Math.min(1.0, amount);
 }
 
 const toSixtyTwo = (a) => {
@@ -1533,15 +1542,16 @@ class AHXOutput {
 
             const smp = (s1 * frac2 + s2 * frac1) >> 16;
             this.MixingBuffer[mb + mixpos++] +=
-              (smp * this.Player.Voices[v].VoiceVolume) >> 6;
+              ((smp * this.Player.Voices[v].VoiceVolume) >> 6) * masterVolume;
             this.pos[v] += delta;
           }
         } else {
           for (let i = 0; i < thiscount; i++) {
             this.MixingBuffer[mb + mixpos++] +=
-              (this.Player.Voices[v].VoiceBuffer[this.pos[v] >> 16] *
+              ((this.Player.Voices[v].VoiceBuffer[this.pos[v] >> 16] *
                 this.Player.Voices[v].VoiceVolume) >>
-              6;
+                6) *
+              masterVolume;
             this.pos[v] += delta;
           }
         }
@@ -1654,4 +1664,9 @@ class AHXMasterBase {
 
 // --- Exports ---
 
-export { AHXMasterBase as AHXMaster, AHXSong };
+export {
+  AHXMasterBase as AHXMaster,
+  AHXSong,
+  setAHXMasterVolume,
+  setAHXOversampling,
+};
